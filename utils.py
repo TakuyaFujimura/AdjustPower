@@ -42,3 +42,8 @@ def rmsr2snr(rsm_ratio):
     # rsm_ratio = s_rsm / n_rsm
     power_ratio = rsm_ratio**2
     return 10 * np.log10(power_ratio)
+
+
+def snr2rmsr(snr):
+    power_ratio = 10 ** (snr / 10)
+    return np.sqrt(power_ratio)
