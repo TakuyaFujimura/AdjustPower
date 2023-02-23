@@ -14,18 +14,24 @@ class AdjustSpeechRMS:
         self,
         input_dir,
         output_dir,
+        converted_dir,
         timestamp_dir,
         figure_dir,
         rms_set=0.05,
         noise_threshold=0.01,
+        sr=48000,
+        subtype="PCM_16",
     ) -> None:
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
+        self.converted_dir = Path(converted_dir)
         self.timestamp_dir = Path(timestamp_dir)
         self.figure_dir = Path(figure_dir)
         assert noise_threshold > 0 and rms_set > 0
         self.rms_set = rms_set
         self.noise_threshold = noise_threshold
+        self.sr = sr
+        self.subtype = subtype
 
     def get_timestamp(self, data, sr, filename, load=False):
         filestem = Path(filename).stem
@@ -67,8 +73,10 @@ class AdjustSpeechRMS:
     def __call__(self, filename_list):
         # filename_list = ["hoge.wav", "fuga.wav", ...]
         for filename in filename_list:
-            input_path = self.input_dir / filename
+            self.wav_convert(filename)
+            input_path = self.converted_dir / filename
             data, sr, subtype = wavread(input_path)
+            assert sr == self.sr and subtype == self.subtype
             timestamps = self.get_timestamp(data, sr, filename, False)
             adjusted_data = self.adjust_rms(data, sr, timestamps)
             output_path = self.output_dir / filename
@@ -92,7 +100,7 @@ class AdjustSpeechRMS:
         assert len(data_label_list) == 2
         assert len(rms_label_list) == 2
 
-        input_path = self.input_dir / filename
+        input_path = self.converted_dir / filename
         output_path = self.output_dir / filename
         original_data, sr, subtype = wavread(input_path)
         adjusted_data, sr, subtype = wavread(output_path)
@@ -147,3 +155,16 @@ class AdjustSpeechRMS:
         # save the figure
         plt.tight_layout()
         plt.savefig(self.figure_dir / f"{filename}.{save_suffix}")
+
+    def wav_convert(self, filename):
+        # transform any wav file to monaural signal
+        assert Path(filename).suffix == ".wav"
+        input_path = self.input_dir / filename
+        output_path = self.converted_dir / filename
+        data, sr_org, subtype = wavread(input_path)
+        if len(data) > 1:
+            # select 0th channel
+            data = data[:, 0]
+        # resample
+        data = signal.resample(data, int(len(data) * self.sr / sr_org))
+        wavwrite(output_path, data, self.sr, self.subtype)
