@@ -70,7 +70,9 @@ class AdjustSpeechRMS:
         noise_rms[end:] = np.sqrt(np.mean(data[end:] ** 2))
         # detect noise from speech segment using threshold
         mean_rms = np.mean(speech_rms[speech_rms > 0])
-        noise_index = speech_rms < mean_rms * self.noise_threshold_percent
+        cond1 = speech_rms < mean_rms * self.noise_threshold_percent
+        cond2 = speech_rms > 0
+        noise_index = cond1 * cond2
         noise_rms[noise_index] = speech_rms[noise_index]
         speech_rms[noise_index] = 0
         return speech_rms, noise_rms
@@ -100,7 +102,7 @@ class AdjustSpeechRMS:
         filename,
         start_sec=0,
         end_sec=10,
-        fig_size=(10, 5),
+        fig_size=(14, 5),
         color_list=["grey", "coral"],
         data_label_list=["Original data", "Adjusted data"],
         speech_rms_label_list=["Original speech RMS", "Adjusted speech RMS"],
@@ -138,7 +140,7 @@ class AdjustSpeechRMS:
 
         n_org_greater = np.sum(speech_rms_org > speech_rms_adj)
         n_adj_greater = np.sum(speech_rms_adj > speech_rms_org)
-        if n_adj_greater >= n_org_greater:
+        if n_org_greater >= n_adj_greater:
             data_list = [data_org, data_adj]
             speech_rms_list = [speech_rms_org, speech_rms_adj]
             noise_rms_list = [noise_rms_org, noise_rms_adj]
@@ -182,7 +184,7 @@ class AdjustSpeechRMS:
         noise_threshold = mean_rms * self.noise_threshold_percent
         axes[1].axhline(
             y=noise_threshold,
-            linestyle="dashed",
+            linestyle="solid",
             color="black",
             label=noise_threshold_label,
         )
