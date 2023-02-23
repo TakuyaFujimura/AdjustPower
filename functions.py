@@ -17,8 +17,9 @@ class AdjustSpeechRMS:
         converted_dir,
         timestamp_dir,
         figure_dir,
-        rms_set=0.05,
-        noise_threshold=0.01,
+        speech_rms_set=0.05,
+        noise_rms_set=0.01,
+        noise_threshold_percent=0.2,
         sr=48000,
         subtype="PCM_16",
     ) -> None:
@@ -27,9 +28,10 @@ class AdjustSpeechRMS:
         self.converted_dir = Path(converted_dir)
         self.timestamp_dir = Path(timestamp_dir)
         self.figure_dir = Path(figure_dir)
-        assert noise_threshold > 0 and rms_set > 0
-        self.rms_set = rms_set
-        self.noise_threshold = noise_threshold
+        assert speech_rms_set > 0 and noise_rms_set > 0
+        self.speech_rms_set = speech_rms_set
+        self.noise_rms_set = noise_rms_set
+        self.noise_threshold_percent = noise_threshold_percent
         self.sr = sr
         self.subtype = subtype
 
@@ -56,18 +58,29 @@ class AdjustSpeechRMS:
                 pickle.dump(timestamps, f)
         return timestamps
 
-    def calc_rms(self, data, sr, timestamps):
-        rms = np.zeros_like(data)
-        for timestamp in timestamps:
+    def calc_rms(self, data, sr, speech_timestamps):
+        speech_rms = np.zeros_like(data)
+        noise_rms = np.zeros_like(data)
+        end = 0
+        for timestamp in speech_timestamps:
             start = timestamp["start"] * int(sr / 16000)
+            noise_rms[end:start] = np.sqrt(np.mean(data[end:start] ** 2))
             end = timestamp["end"] * int(sr / 16000)
-            rms[start:end] = np.sqrt(np.mean(data[start:end] ** 2))
-        return rms
+            speech_rms[start:end] = np.sqrt(np.mean(data[start:end] ** 2))
+        noise_rms[end:] = np.sqrt(np.mean(data[end:] ** 2))
+        # detect noise from speech segment using threshold
+        mean_rms = np.mean(speech_rms[speech_rms > 0])
+        noise_index = speech_rms < mean_rms * self.noise_threshold_percent
+        noise_rms[noise_index] = speech_rms[noise_index]
+        speech_rms[noise_index] = 0
+        return speech_rms, noise_rms
 
     def adjust_rms(self, data, sr, timestamps):
-        rms_org = self.calc_rms(data, sr, timestamps)
-        process_index = rms_org > self.noise_threshold
-        data[process_index] *= self.rms_set / rms_org[process_index]
+        speech_rms, noise_rms = self.calc_rms(data, sr, timestamps)
+        index = speech_rms > 0
+        data[index] *= self.speech_rms_set / speech_rms[index]
+        index = noise_rms > 0
+        data[index] *= self.noise_rms_set / noise_rms[index]
         return data
 
     def __call__(self, filename_list):
@@ -90,46 +103,53 @@ class AdjustSpeechRMS:
         fig_size=(10, 5),
         color_list=["grey", "coral"],
         data_label_list=["Original data", "Adjusted data"],
-        rms_label_list=["Original RMS", "Adjusted RMS"],
+        speech_rms_label_list=["Original speech RMS", "Adjusted speech RMS"],
+        noise_rms_label_list=["Original noise RMS", "Adjusted noise RMS"],
+        noise_threshold_label="noise threshold",
         save_suffix="pdf",
         label_font_size=14,
     ):
         # each color and label list is [original,  adjusted]
-        assert start_sec >= 0 and end_sec > start_sec
         assert len(color_list) == 2
         assert len(data_label_list) == 2
-        assert len(rms_label_list) == 2
+        assert len(speech_rms_label_list) == 2
+        assert len(noise_rms_label_list) == 2
 
         input_path = self.converted_dir / filename
         output_path = self.output_dir / filename
-        original_data, sr, subtype = wavread(input_path)
-        adjusted_data, sr, subtype = wavread(output_path)
+        data_org, sr, subtype = wavread(input_path)
+        data_adj, sr, subtype = wavread(output_path)
 
         # I observed the VAD result is different between using
         # the entire audio and the cropped one.
         # Therefore, we once obtain the timestamp of the entire
         # audio and crop it for visualization.
-        original_timestamps = self.get_timestamp(original_data, sr, filename, load=True)
-        original_rms = self.calc_rms(original_data, sr, original_timestamps)
-        adjusted_rms = self.calc_rms(adjusted_data, sr, original_timestamps)
+        timestamps_org = self.get_timestamp(data_org, sr, filename, load=True)
+        speech_rms_org, noise_rms_org = self.calc_rms(data_org, sr, timestamps_org)
+        speech_rms_adj, noise_rms_adj = self.calc_rms(data_adj, sr, timestamps_org)
 
         # crop the segment
-        original_data = original_data[int(start_sec * sr) : int(end_sec * sr)]
-        adjusted_data = adjusted_data[int(start_sec * sr) : int(end_sec * sr)]
-        original_rms = original_rms[int(start_sec * sr) : int(end_sec * sr)]
-        adjusted_rms = adjusted_rms[int(start_sec * sr) : int(end_sec * sr)]
+        data_org = data_org[int(start_sec * sr) : int(end_sec * sr)]
+        data_adj = data_adj[int(start_sec * sr) : int(end_sec * sr)]
+        speech_rms_org = speech_rms_org[int(start_sec * sr) : int(end_sec * sr)]
+        noise_rms_org = noise_rms_org[int(start_sec * sr) : int(end_sec * sr)]
+        speech_rms_adj = speech_rms_adj[int(start_sec * sr) : int(end_sec * sr)]
+        noise_rms_adj = noise_rms_adj[int(start_sec * sr) : int(end_sec * sr)]
 
-        n_org_greater = np.sum(original_rms > adjusted_rms)
-        n_adj_greater = np.sum(adjusted_rms > original_rms)
+        n_org_greater = np.sum(speech_rms_org > speech_rms_adj)
+        n_adj_greater = np.sum(speech_rms_adj > speech_rms_org)
         if n_adj_greater >= n_org_greater:
-            data_list = [original_data, adjusted_data]
-            rms_list = [original_rms, adjusted_rms]
+            data_list = [data_org, data_adj]
+            speech_rms_list = [speech_rms_org, speech_rms_adj]
+            noise_rms_list = [noise_rms_org, noise_rms_adj]
         else:
-            data_list = [adjusted_data, original_data]
-            rms_list = [adjusted_rms, original_rms]
+            data_list = [data_adj, data_org]
+            speech_rms_list = [speech_rms_adj, speech_rms_org]
+            noise_rms_list = [noise_rms_adj, noise_rms_org]
             color_list = color_list[::-1]
             data_label_list = data_label_list[::-1]
-            rms_label_list = rms_label_list[::-1]
+            speech_rms_label_list = speech_rms_label_list[::-1]
+            noise_rms_label_list = noise_rms_label_list[::-1]
 
         fig, axes = plt.subplots(nrows=2, ncols=1, figsize=fig_size)
         t = np.arange(int(start_sec * sr), int(end_sec * sr)) / sr
@@ -137,20 +157,41 @@ class AdjustSpeechRMS:
         # plot signals
         for i in range(2):
             axes[0].plot(t, data_list[i], color=color_list[i], label=data_label_list[i])
-        ylim = np.max(np.abs(original_data)) * 2
+        ylim = np.max(np.abs(data_org)) * 2
         axes[0].set_ylim(-ylim, ylim)
         axes[0].set_ylabel("Amplitude", fontsize=label_font_size)
         axes[0].legend(loc="upper right", fontsize=label_font_size, ncol=2)
 
         # plot RMSs
         for i in range(2):
-            axes[1].plot(t, rms_list[i], color=color_list[i], label=rms_label_list[i])
+            axes[1].plot(
+                t,
+                speech_rms_list[i],
+                color=color_list[i],
+                label=speech_rms_label_list[i],
+            )
+        for i in range(2):
+            axes[1].plot(
+                t,
+                noise_rms_list[i],
+                color=color_list[i],
+                linestyle="dashed",
+                label=noise_rms_label_list[i],
+            )
+        mean_rms = np.mean(speech_rms_org[speech_rms_org > 0])
+        noise_threshold = mean_rms * self.noise_threshold_percent
+        axes[1].axhline(
+            y=noise_threshold,
+            linestyle="dashed",
+            color="black",
+            label=noise_threshold_label,
+        )
 
-        ylim = np.max(np.abs(np.stack(rms_list))) * 1.5
+        ylim = np.max(np.abs(np.stack(speech_rms_list))) * 1.7
         axes[1].set_ylim(0, ylim)
         axes[1].set_ylabel("RMS", fontsize=label_font_size)
         axes[1].set_xlabel("Time [sec]", fontsize=label_font_size)
-        axes[1].legend(loc="upper right", fontsize=label_font_size, ncol=3)
+        axes[1].legend(loc="upper right", fontsize=label_font_size, ncol=5)
 
         # save the figure
         plt.tight_layout()
