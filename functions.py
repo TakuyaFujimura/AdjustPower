@@ -191,7 +191,7 @@ class AdjustSpeechRMS:
                 label=noise_rms_label_list[i],
             )
         mean_rms = np.mean(speech_rms_org[speech_rms_org > 0])
-        noise_threshold = mean_rms * self.noise_threshold_percent
+        noise_threshold = mean_rms / snr2rmsr(self.noise_threshold_snr)
         axes[1].axhline(
             y=noise_threshold,
             linestyle="dotted",
