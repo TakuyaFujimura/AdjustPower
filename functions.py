@@ -80,11 +80,9 @@ class AdjustSpeechRMS:
         start_sec=0,
         end_sec=10,
         fig_size=(10, 5),
-        isReverse=False,
         color_list=["grey", "coral"],
         data_label_list=["Original data", "Adjusted data"],
         rms_label_list=["Original RMS", "Adjusted RMS"],
-        rms_set_label="RMS set value",
         save_suffix="pdf",
         label_font_size=14,
     ):
@@ -113,15 +111,17 @@ class AdjustSpeechRMS:
         original_rms = original_rms[int(start_sec * sr) : int(end_sec * sr)]
         adjusted_rms = adjusted_rms[int(start_sec * sr) : int(end_sec * sr)]
 
-        if isReverse:
+        n_org_greater = np.sum(original_rms > adjusted_rms)
+        n_adj_greater = np.sum(adjusted_rms > original_rms)
+        if n_adj_greater >= n_org_greater:
+            data_list = [original_data, adjusted_data]
+            rms_list = [original_rms, adjusted_rms]
+        else:
             data_list = [adjusted_data, original_data]
             rms_list = [adjusted_rms, original_rms]
             color_list = color_list[::-1]
             data_label_list = data_label_list[::-1]
             rms_label_list = rms_label_list[::-1]
-        else:
-            data_list = [original_data, adjusted_data]
-            rms_list = [original_rms, adjusted_rms]
 
         fig, axes = plt.subplots(nrows=2, ncols=1, figsize=fig_size)
         t = np.arange(int(start_sec * sr), int(end_sec * sr)) / sr
