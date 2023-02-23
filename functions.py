@@ -207,7 +207,7 @@ class AdjustSpeechRMS:
 
         # save the figure
         plt.tight_layout()
-        plt.savefig(self.figure_dir / f"{filename}.{save_suffix}")
+        plt.savefig(self.figure_dir / f"{filename.stem}.{save_suffix}")
 
     def wav_convert(self, filename):
         # transform any wav file to monaural signal
