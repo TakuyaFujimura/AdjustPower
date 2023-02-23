@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from scipy import signal
-from util import wavread, wavwrite
+
+from .util import wavread, wavwrite
 
 
 class AdjustSpeechRMS:
