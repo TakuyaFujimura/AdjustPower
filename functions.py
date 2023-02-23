@@ -64,7 +64,7 @@ class AdjustSpeechRMS:
         data[process_index] *= self.rms_set / rms_org[process_index]
         return data
 
-    def __forward__(self, filename_list):
+    def __call__(self, filename_list):
         # filename_list = ["hoge.wav", "fuga.wav", ...]
         for filename in filename_list:
             input_path = self.input_dir / filename
@@ -79,7 +79,7 @@ class AdjustSpeechRMS:
         filename,
         start_sec=0,
         end_sec=10,
-        fig_size=(12, 6),
+        fig_size=(10, 5),
         isReverse=False,
         color_list=["grey", "coral"],
         data_label_list=["Original data", "Adjusted data"],
@@ -89,7 +89,7 @@ class AdjustSpeechRMS:
         label_font_size=14,
     ):
         # each color and label list is [original,  adjusted]
-        assert start_sec > 0 and end_sec > 0
+        assert start_sec >= 0 and end_sec > start_sec
         assert len(color_list) == 2
         assert len(data_label_list) == 2
         assert len(rms_label_list) == 2
@@ -137,14 +137,12 @@ class AdjustSpeechRMS:
         # plot RMSs
         for i in range(2):
             axes[1].plot(t, rms_list[i], color=color_list[i], label=rms_label_list[i])
-        axes[1].axhline(
-            y=self.rms_set, linestyle="dashed", color="black", label=rms_set_label
-        )
-        ylim = self.rms_set * 2.4
-        axes[1].set_ylim(-ylim, ylim)
+
+        ylim = np.max(np.abs(np.stack(rms_list))) * 1.5
+        axes[1].set_ylim(0, ylim)
         axes[1].set_ylabel("RMS", fontsize=label_font_size)
         axes[1].set_xlabel("Time [sec]", fontsize=label_font_size)
-        axes[1].legend(loc="upper right", fontsize=label_font_size, ncol=2)
+        axes[1].legend(loc="upper right", fontsize=label_font_size, ncol=3)
 
         # save the figure
         plt.tight_layout()
