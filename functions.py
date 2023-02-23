@@ -40,6 +40,7 @@ class AdjustSpeechRMS:
                 model="silero_vad",
                 force_reload=False,
                 verbose=False,
+                trust_repo=True,
             )
             (vad, _, read_audio, *_) = utils
             # resample a signal to 16kHz
@@ -63,7 +64,7 @@ class AdjustSpeechRMS:
         data[process_index] *= self.rms_set / rms_org[process_index]
         return data
 
-    def forward(self, filename_list):
+    def __forward__(self, filename_list):
         # filename_list = ["hoge.wav", "fuga.wav", ...]
         for filename in filename_list:
             input_path = self.input_dir / filename
