@@ -20,7 +20,7 @@ class AdjustSpeechRMS:
         figure_dir,
         speech_rms_set=0.05,
         noise_snr_set=30,
-        noise_threshold_snr=15,
+        noise_threshold_snr=20,
         sr=48000,
         subtype="PCM_16",
     ) -> None:
