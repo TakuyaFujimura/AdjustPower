@@ -1,3 +1,4 @@
+import datetime
 import pickle
 from pathlib import Path
 
@@ -85,6 +86,14 @@ class AdjustSpeechRMS:
         data[index] *= self.noise_rms_set / noise_rms[index]
         return data
 
+    def log(self, filename):
+        log_path = self.output_dir / f"{Path(filename).stem}.txt"
+        with open(log_path, "a") as f:
+            f.write(f"==== {datetime.datetime.now()} ====\n")
+            for key, value in vars(adjust_obj).items():
+                f.write(f"{key}: {value}\n")
+            f.write("====================================\n\n")
+
     def __call__(self, filename_list):
         # filename_list = ["hoge.wav", "fuga.wav", ...]
         for filename in filename_list:
@@ -96,6 +105,7 @@ class AdjustSpeechRMS:
             adjusted_data = self.adjust_rms(data, sr, timestamps)
             output_path = self.output_dir / filename
             wavwrite(output_path, adjusted_data, sr, subtype)
+            self.log(filename)
 
     def plot_figs(
         self,
@@ -184,7 +194,7 @@ class AdjustSpeechRMS:
         noise_threshold = mean_rms * self.noise_threshold_percent
         axes[1].axhline(
             y=noise_threshold,
-            linestyle="solid",
+            linestyle="dotted",
             color="black",
             label=noise_threshold_label,
         )
