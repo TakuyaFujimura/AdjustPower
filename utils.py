@@ -36,3 +36,9 @@ def wav_concat(filepath_list, output_path):
         all_data.append(data)
     concat_data = np.concatenate(all_data, axis=0)
     wavwrite(output_path, concat_data, sr, subtype)
+
+
+def rmsr2snr(rsm_ratio):
+    # rsm_ratio = s_rsm / n_rsm
+    power_ratio = rsm_ratio**2
+    return 10 * np.log10(power_ratio)
