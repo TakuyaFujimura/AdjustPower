@@ -119,7 +119,7 @@ class AdjustSpeechRMS:
         noise_rms_label_list=["Original noise RMS", "Adjusted noise RMS"],
         noise_threshold_label="noise threshold",
         save_suffix="pdf",
-        label_font_size=14,
+        label_font_size=12,
     ):
         # each color and label list is [original,  adjusted]
         assert len(color_list) == 2
