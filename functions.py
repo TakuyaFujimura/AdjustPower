@@ -90,7 +90,7 @@ class AdjustSpeechRMS:
         log_path = self.output_dir / f"{Path(filename).stem}.txt"
         with open(log_path, "a") as f:
             f.write(f"==== {datetime.datetime.now()} ====\n")
-            for key, value in vars(adjust_obj).items():
+            for key, value in vars(self).items():
                 f.write(f"{key}: {value}\n")
             f.write("====================================\n\n")
 
