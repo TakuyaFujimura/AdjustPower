@@ -1,1 +1,1 @@
-from functions import AdjustSpeechRMS
+from .functions import AdjustSpeechRMS

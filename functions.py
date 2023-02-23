@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from scipy import signal
 
-from utils import wavread, wavwrite
+from .utils import wavread, wavwrite
 
 
 class AdjustSpeechRMS:
