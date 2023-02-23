@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from scipy import signal
 
-from .utils import wavread, wavwrite
+from .utils import snr2rmsr, wavread, wavwrite
 
 
 class AdjustSpeechRMS:
@@ -19,8 +19,8 @@ class AdjustSpeechRMS:
         timestamp_dir,
         figure_dir,
         speech_rms_set=0.05,
-        noise_rms_set=0.01,
-        noise_threshold_percent=0.2,
+        noise_snr_set=15,
+        noise_threshold_snr=15,
         sr=48000,
         subtype="PCM_16",
     ) -> None:
@@ -29,10 +29,10 @@ class AdjustSpeechRMS:
         self.converted_dir = Path(converted_dir)
         self.timestamp_dir = Path(timestamp_dir)
         self.figure_dir = Path(figure_dir)
-        assert speech_rms_set > 0 and noise_rms_set > 0
+        assert speech_rms_set > 0
         self.speech_rms_set = speech_rms_set
-        self.noise_rms_set = noise_rms_set
-        self.noise_threshold_percent = noise_threshold_percent
+        self.noise_rms_set = speech_rms_set / snr2rmsr(noise_snr_set)
+        self.noise_threshold_snr = noise_threshold_snr
         self.sr = sr
         self.subtype = subtype
 
@@ -71,7 +71,7 @@ class AdjustSpeechRMS:
         noise_rms[end:] = np.sqrt(np.mean(data[end:] ** 2))
         # detect noise from speech segment using threshold
         mean_rms = np.mean(speech_rms[speech_rms > 0])
-        cond1 = speech_rms < mean_rms * self.noise_threshold_percent
+        cond1 = speech_rms < mean_rms / snr2rmsr(self.noise_threshold_snr)
         cond2 = speech_rms > 0
         noise_index = cond1 * cond2
         noise_rms[noise_index] = speech_rms[noise_index]
