@@ -19,8 +19,8 @@ class AdjustSpeechRMS:
         timestamp_dir,
         figure_dir,
         speech_rms_set=0.05,
-        noise_snr_set=15,
-        noise_threshold_snr=30,
+        noise_snr_set=30,
+        noise_threshold_snr=15,
         sr=48000,
         subtype="PCM_16",
     ) -> None:
