@@ -20,7 +20,7 @@ class AdjustSpeechRMS:
         figure_dir,
         speech_rms_set=0.05,
         noise_snr_set=30,
-        noise_threshold_snr=20,
+        noise_threshold_ratio=0.2,
         sr=48000,
         subtype="PCM_16",
     ) -> None:
@@ -32,7 +32,7 @@ class AdjustSpeechRMS:
         assert speech_rms_set > 0
         self.speech_rms_set = speech_rms_set
         self.noise_rms_set = speech_rms_set / snr2rmsr(noise_snr_set)
-        self.noise_threshold_snr = noise_threshold_snr
+        self.noise_threshold_ratio = noise_threshold_ratio
         self.sr = sr
         self.subtype = subtype
 
@@ -71,7 +71,7 @@ class AdjustSpeechRMS:
         noise_rms[end:] = np.sqrt(np.mean(data[end:] ** 2))
         # detect noise from speech segment using threshold
         mean_rms = np.mean(speech_rms[speech_rms > 0])
-        cond1 = speech_rms < mean_rms / snr2rmsr(self.noise_threshold_snr)
+        cond1 = speech_rms < mean_rms * self.noise_threshold_ratio
         cond2 = speech_rms > 0
         noise_index = cond1 * cond2
         noise_rms[noise_index] = speech_rms[noise_index]
