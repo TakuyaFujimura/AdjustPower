@@ -39,7 +39,7 @@ def wav_concat(filepath_list, output_path):
 
 
 def rmsr2snr(rsm_ratio):
-    # rsm_ratio = s_rsm / n_rsm
+    # rms_ratio = s_rsm / n_rsm
     power_ratio = rsm_ratio**2
     return 10 * np.log10(power_ratio)
 
