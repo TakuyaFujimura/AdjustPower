@@ -76,10 +76,10 @@ class AdjustSpeechRMS:
         noise_index = cond1 * cond2
         noise_rms[noise_index] = speech_rms[noise_index]
         speech_rms[noise_index] = 0
-        return speech_rms, noise_rms
+        return speech_rms, noise_rms, mean_rms
 
     def adjust_rms(self, data, sr, timestamps):
-        speech_rms, noise_rms = self.calc_rms(data, sr, timestamps)
+        speech_rms, noise_rms, mean_rms = self.calc_rms(data, sr, timestamps)
         index = speech_rms > 0
         data[index] *= self.speech_rms_set / speech_rms[index]
         index = noise_rms > 0
@@ -137,8 +137,10 @@ class AdjustSpeechRMS:
         # Therefore, we once obtain the timestamp of the entire
         # audio and crop it for visualization.
         timestamps_org = self.get_timestamp(data_org, sr, filename, load=True)
-        speech_rms_org, noise_rms_org = self.calc_rms(data_org, sr, timestamps_org)
-        speech_rms_adj, noise_rms_adj = self.calc_rms(data_adj, sr, timestamps_org)
+        speech_rms_org, noise_rms_org, mean_rms_org = self.calc_rms(
+            data_org, sr, timestamps_org
+        )
+        speech_rms_adj, noise_rms_adj, _ = self.calc_rms(data_adj, sr, timestamps_org)
 
         # crop the segment
         data_org = data_org[int(start_sec * sr) : int(end_sec * sr)]
@@ -190,8 +192,7 @@ class AdjustSpeechRMS:
                 linestyle="dashed",
                 label=noise_rms_label_list[i],
             )
-        mean_rms = np.mean(speech_rms_org[speech_rms_org > 0])
-        noise_threshold = mean_rms * self.noise_threshold_ratio
+        noise_threshold = mean_rms_org * self.noise_threshold_ratio
         axes[1].axhline(
             y=noise_threshold,
             linestyle="dotted",
